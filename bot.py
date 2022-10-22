@@ -2,7 +2,9 @@ import discord
 from discord.ext import commands
 import os
 import asyncio
+from dotenv import load_dotenv
 
+load_dotenv()
 
 class Customhelp(commands.HelpCommand):
     def __init__(self):
@@ -26,7 +28,7 @@ class Customhelp(commands.HelpCommand):
 intents = discord.Intents.all()
 client = commands.Bot(command_prefix = '-',intents=intents, help_command=Customhelp())
 client.remove_command('help')
-key = "MTAzMDg2Mzg5OTYzMDc2NDExMw.GyQpA4.zmrTk_89ahUEjnipTVIdOuNU-1gXKH0OOzZ2Hc"
+key = os.getenv('TOKEN')
 
 
 
