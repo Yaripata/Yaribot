@@ -43,13 +43,6 @@ async def load_extensions():
         if filename.endswith('.py'):
             await client.load_extension(f'cogs.{filename[:-3]}')
 
-# # This event happens when a message gets sent
-# @client.event
-# async def on_message(msg):
-#     if msg.author == client.user:
-#         pass
-#     else:
-#         await musica(msg)
 
 async def main():
     async with client:
