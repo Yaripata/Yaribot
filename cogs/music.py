@@ -57,14 +57,14 @@ class music_cog(commands.Cog):
     
         
     def play_next(self,voice_client):
-        if len(self.music_queue[voice_client.guild.id]) > 0:
+        if len(self.music_queue[voice_client]) > 0:
             self.is_playing = True
 
-            m_url, nombre, _ = self.music_queue[voice_client.guild.id][0]
+            m_url, nombre, _ = self.music_queue[voice_client][0]
             
-            self.music_queue[voice_client.guild.id].pop(0)
+            self.music_queue[voice_client].pop(0)
 
-            self.voice_clients[voice_client.guild.id].play(discord.FFmpegPCMAudio(m_url, **self.ffmpeg_options), after=lambda e: self.play_next(voice_client))
+            self.voice_clients[voice_client].play(discord.FFmpegPCMAudio(m_url, **self.ffmpeg_options), after=lambda e: self.play_next(voice_client))
         else:
             self.is_playing = False
     
@@ -88,7 +88,7 @@ class music_cog(commands.Cog):
             await ctx.send("Reproduciendo "+ nombre +" 🎧")
             
             player = discord.FFmpegPCMAudio(m_url, **self.ffmpeg_options)
-            self.voice_clients[voice.guild.id].play(player,after=lambda e: self.play_next(voice_client))
+            self.voice_clients[voice.guild.id].play(player,after=lambda e: self.play_next(Guildid))
         else:
             self.is_playing = False
     
@@ -158,7 +158,7 @@ class music_cog(commands.Cog):
         if self.voice_clients[client.guild.id] != None and self.voice_clients[client.guild.id]:
             self.voice_clients[client.guild.id].stop()
             #try to play next in the queue if it exists
-            self.play_next(client)
+            self.play_next(client.guild.id)
             await ctx.send("Saltada la cancion ql")
             
             
