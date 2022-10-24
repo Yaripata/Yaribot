@@ -2,3 +2,4 @@
 /Dockerfile
 /__pycache__
 /cogs/__pycache__
+/temp.py

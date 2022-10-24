@@ -2,20 +2,21 @@ import discord
 import asyncio
 import youtube_dl
 from discord.ext import commands
-import logging
+#import logging
 import sys
 
 
+# root = logging.getLogger("discord.ext.commands.bot")
 
-root = logging.getLogger("discord.ext.commands.bot")
-root.setLevel(logging.DEBUG)
+# #root = logging.getLogger()
+# root.setLevel(logging.DEBUG)
 
-#handler = logging.StreamHandler(sys.stdout)
-handler = logging.StreamHandler()
-handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-root.addHandler(handler)
+# #handler = logging.StreamHandler(sys.stdout)
+# handler = logging.StreamHandler()
+# handler.setLevel(logging.DEBUG)
+# formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# handler.setFormatter(formatter)
+# root.addHandler(handler)
 
 
             
@@ -28,7 +29,10 @@ class music_cog(commands.Cog):
         self.is_playing = False
         self.is_paused = False
         
-        self.music_queue = []
+        self.music_queue = {}
+        
+        self.voice_clients = {}
+        
         self.yt_dl_opts = {
             'format': 'bestaudio/best',
             'extractaudio': True,
@@ -52,40 +56,39 @@ class music_cog(commands.Cog):
     
     
         
-    def play_next(self):
-        if len(self.music_queue) > 0:
+    def play_next(self,voice_client):
+        if len(self.music_queue[voice_client.guild.id]) > 0:
             self.is_playing = True
 
-            m_url, nombre, _ = self.music_queue[0]
+            m_url, nombre, _ = self.music_queue[voice_client.guild.id][0]
             
-            self.music_queue.pop(0)
+            self.music_queue[voice_client.guild.id].pop(0)
 
-            self.vc.play(discord.FFmpegPCMAudio(m_url, **self.ffmpeg_options), after=lambda e: self.play_next())
+            self.voice_clients[voice_client.guild.id].play(discord.FFmpegPCMAudio(m_url, **self.ffmpeg_options), after=lambda e: self.play_next(voice_client))
         else:
             self.is_playing = False
     
     
-    async def play_music(self, ctx):
-        print(self.is_playing, self.music_queue)
-        if len(self.music_queue) > 0:
+    async def play_music(self, ctx,Guildid):
+        if len(self.music_queue[Guildid]) > 0:
             self.is_playing = True
             
-            m_url, nombre, voice = self.music_queue[0]
+            m_url, nombre, voice = self.music_queue[Guildid][0]
             
-            if self.vc == None or not self.vc.is_connected():
-                self.vc = await voice.connect()
-                if self.vc == None:
+            if self.voice_clients[voice.guild.id] == None or not self.voice_clients[voice.guild.id].is_connected():
+                self.voice_clients[voice.guild.id] = await voice.connect()
+                if self.voice_clients[voice.guild.id] == None:
                     await ctx.send("No pude conectarme al voice wn")
                     return
             else:
-                await self.vc.move_to(voice)
-            
-            self.music_queue.pop(0)
+                await self.voice_clients[voice.guild.id].move_to(voice)
+        
+            self.music_queue[Guildid].pop(0)
             
             await ctx.send("Reproduciendo "+ nombre +" 🎧")
             
             player = discord.FFmpegPCMAudio(m_url, **self.ffmpeg_options)
-            self.vc.play(player,after=lambda e: self.play_next())
+            self.voice_clients[voice.guild.id].play(player,after=lambda e: self.play_next(voice_client))
         else:
             self.is_playing = False
     
@@ -107,10 +110,16 @@ class music_cog(commands.Cog):
                 titulo = data['title']
                 
                 await ctx.send("Cancion ql añadida a la cola")
-                self.music_queue.append([song,titulo,voice_client])
                 
+                try:
+                    self.music_queue[voice_client.guild.id].append([song,titulo,voice_client])
+                except:
+                    self.music_queue[voice_client.guild.id] = []
+                    self.music_queue[voice_client.guild.id].append([song,titulo,voice_client])
+                    self.voice_clients[voice_client.guild.id] = None
+
                 if self.is_playing == False:
-                    await self.play_music(ctx)
+                    await self.play_music(ctx,voice_client.guild.id)
                     
 
             except Exception as err:
@@ -121,36 +130,46 @@ class music_cog(commands.Cog):
                 titulo = data['title']
                 
                 await ctx.send("Cancion ql añadida a la cola")
-                self.music_queue.append([song, titulo,voice_client])
+                try:
+                    self.music_queue[voice_client.guild.id].append([song,titulo,voice_client])
+                except:
+                    self.music_queue[voice_client.guild.id] = []
+                    self.music_queue[voice_client.guild.id].append([song,titulo,voice_client])
+                    self.voice_clients[voice_client.guild.id] = None
+                
                 
                 if self.is_playing == False:
-                    await self.play_music(ctx)
+                    await self.play_music(ctx,voice_client.guild.id)
             
     
     @commands.command(name="pause", aliases=["pa"], help="Pausa la cancion actual")
     async def pause(self, ctx):
         try:
+            client = ctx.author.voice.channel.guild.id
             await ctx.send("Pausada la cancion ql")
-            self.vc.pause()
+            self.voice_clients[client].pause()
         except Exception as err:
             print(err)
     
     
     @commands.command(name="skip", help="Skips the current song being played")
     async def skip(self, ctx):
-        if self.vc != None and self.vc:
-            self.vc.stop()
+        client = ctx.author.voice.channel
+        if self.voice_clients[client.guild.id] != None and self.voice_clients[client.guild.id]:
+            self.voice_clients[client.guild.id].stop()
             #try to play next in the queue if it exists
-            await self.play_next(ctx)
+            self.play_next(client)
+            await ctx.send("Saltada la cancion ql")
             
             
     @commands.command(name="queue", aliases=["q"], help="Displays the current songs in queue")
     async def queue(self, ctx):
+        client = ctx.author.voice.channel.guild.id
         retval = ""
-        for i in range(0, len(self.music_queue)):
+        for i in range(0, len(self.music_queue[client])):
             # display a max of 5 songs in the current queue
             if (i > 4): break
-            retval += self.music_queue[i][1] + "\n"
+            retval += self.music_queue[client][i][1] + "\n"
 
         if retval != "":
             await ctx.send(retval)
@@ -161,7 +180,8 @@ class music_cog(commands.Cog):
     @commands.command(name="resume", aliases=["r"], help="Vuelve a reproducir la cancion pausada")
     async def resume(self,ctx):
         try:
-            self.vc.resume()
+            client = ctx.author.voice.channel.guild.id
+            self.voice_clients[client].resume()
             await ctx.send("Resumia la cancion ql")
         except Exception as err:
             print(err)
@@ -169,8 +189,9 @@ class music_cog(commands.Cog):
     @commands.command(name="stop", aliases=["s"], help="Detiene el bot")      
     async def stop(self,ctx):
         try:
-            self.vc.stop()
-            await self.vc.disconnect()
+            client = ctx.author.voice.channel.guild.id
+            self.voice_clients[client].stop()
+            await self.voice_clients[client].disconnect()
             await ctx.send("Chao ctm")
         except Exception as err:
             print(err)
