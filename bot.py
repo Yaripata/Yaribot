@@ -9,10 +9,24 @@ load_dotenv()
 class Customhelp(commands.HelpCommand):
     def __init__(self):
         super().__init__()
+        self.template = "📍 -{comando} : {accion_comando} \n"
     
     async def send_bot_help(self, mapping):
+        mensaje = "📦 Comandos 📦 \n"
+        dic = {}
         for cog in mapping:
-            await self.get_destination().send(f'{cog.qualified_name}: {[command.name for command in mapping[cog]]}')
+            try:
+                dic[cog.qualified_name] = [(command.name, command.help) for command in mapping[cog]]
+            except Exception:
+                continue
+        for cogs in dic:
+            mensaje += "              📜  "+cogs+"  📜\n ----------------------------------------------------- \n"
+            comandos = dic[cogs]
+            for data in comandos:
+                mensaje += self.template.format(comando=data[0],accion_comando=data[1])
+        await self.get_destination().send(mensaje)
+        
+
     
     async def send_cog_help(self, cog):
         await self.get_destination().send(f'{cog.qualified_name}: {[command.name for command in cog.get_commands()]}')
@@ -24,11 +38,14 @@ class Customhelp(commands.HelpCommand):
         return await super().send_command_help(command)
 
 
+
 # Discord bot Initialization
 intents = discord.Intents.all()
-client = commands.Bot(command_prefix = '-',intents=intents, help_command=Customhelp(), activity = discord.Activity(type=discord.ActivityType.watching, name="Funcional 👀"))
+client = commands.Bot(command_prefix = '-',intents=intents, activity = discord.Activity(type=discord.ActivityType.watching, name="En prueba 🎈"))
 client.remove_command('help')
 key = os.getenv('TOKEN')
+
+client.help_command = Customhelp()
 
 
 
