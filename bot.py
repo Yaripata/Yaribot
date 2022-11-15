@@ -41,7 +41,7 @@ class Customhelp(commands.HelpCommand):
 
 # Discord bot Initialization
 intents = discord.Intents.all()
-client = commands.Bot(command_prefix = '-',intents=intents, activity = discord.Activity(type=discord.ActivityType.watching, name="En prueba 🎈"))
+client = commands.Bot(command_prefix = '-',intents=intents, activity = discord.Activity(type=discord.ActivityType.watching, name="Funcional 👌"))
 client.remove_command('help')
 key = os.getenv('TOKEN')
 
